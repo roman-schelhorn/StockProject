@@ -1,0 +1,11 @@
+# CLion / CMake / OS junk
+.idea/
+cmake-build-*/
+build/
+out/
+.vs/
+*.obj
+*.o
+*.exe
+*.log
+*.DS_Store
