@@ -62,222 +62,230 @@ vector<TradingDay> read_days(const string& fn) {
 }
 
 
+// measure the total number of days between two trading days (earlier day goes first)
+double days_between(const TradingDay& td1, const TradingDay& td2) {
+    // Get date strings from both objects
+    string date1 = td1.get_date();
+    string date2 = td2.get_date();
 
-// days passed function
-// percent change functions
-// annualized % change (2 versions)
+    // Parse first date (mm/dd/yyyy)
+    int month1 = stoi(date1.substr(0, 2));
+    int day1 = stoi(date1.substr(3, 2));
+    int year1 = stoi(date1.substr(6, 4));
+
+    // Parse second date (mm/dd/yyyy)
+    int month2 = stoi(date2.substr(0, 2));
+    int day2 = stoi(date2.substr(3, 2));
+    int year2 = stoi(date2.substr(6, 4));
+
+    // Create tm structs for both dates
+    struct tm time1 = {0, 0, 0, day1, month1 - 1, year1 - 1900};
+    struct tm time2 = {0, 0, 0, day2, month2 - 1, year2 - 1900};
+
+    // Convert to time_t (seconds since epoch)
+    time_t t1 = mktime(&time1);
+    time_t t2 = mktime(&time2);
+
+    // Calculate difference in days (signed)
+    return (t2 - t1) / 86400;
+}
+
+
+// calculate the percent change between two days using close prices (return value is in decimal format)
+double percent_change(const TradingDay& td1, const TradingDay& td2) {
+    return td2.get_close() / td1.get_close() - 1;
+}
+
+// calculate annualized percentage change
+double annualized_pc(const TradingDay& td1, const TradingDay& td2) {
+    double days = days_between(td1, td2);
+    return pow( td2.get_close()/td1.get_close(), 365/days) - 1;
+}
+// annualize a raw percentage change
+double annualized_pc(const double& pc, const double& days) {
+    return pow((1+pc), 365/days) - 1 ;
+}
+
+
+// count the number of times a stock increased
+
+
+
+
 // count increases, decreases, and sames
 // return days above, below, and on the line
 // return a weighted version by dollar amount difference
 
 
 
-
-
-
-
-// return the number of days passed between two string dates entered as mm/dd/yyyy
-// using the 30/365 estimation method for convenience
-double days_passed(const string& start, const string& end) {
-
-    int smonth = stoi(start.substr(0,2));
-    int sday = stoi(start.substr(3, 2));
-    int syear = stoi(start.substr(6, 4));
-
-    int emonth = stoi(end.substr(0,2));
-    int eday = stoi(end.substr(3, 2));
-    int eyear = stoi(end.substr(6, 4));
-
-    double days = (eday - sday);
-    days += ( 30 * (emonth - smonth) );
-    days += ( 365 * (eyear - syear) );
-
-    return days;
-}
-
-
-// calculate %change
-double percent_change(const double& a, const double& b) {
-    return (b / a - 1);
-}
-
-// annual %change
-double annual_p_change(const double& a, const double& b, const double& days) {
-    return ( pow((b/a), 365/days) - 1 );
-}
-
-double annual_p_change(const double& pc, const double& days) {
-    return ( pow((1+pc), 365/days) - 1 );
-}
-
-// number of days the stock increased (close > open)
-double days_of_increases(const string& fn, const string& start, const string& end) {
-    ifstream infile {fn};
-
-    string holder;
-    string x;
-    string y;
-    string d;
-
-    double ups = 0;
-
-    while (getline(infile, holder)) {
-        stringstream ss {holder};
-        ss >> x >> y >> d;
-
-        if (days_passed(start, d) >= 0 && days_passed(d, end) >= 0) {
-            if (stod(x) < stod(y)) ++ups;
-        }
-    }
-    return ups;
-}
-
-// number of days the stock increased (close > open)
-double days_of_decreases(const string& fn, const string& start, const string& end) {
-    ifstream infile {fn};
-
-    string holder;
-    string x;
-    string y;
-    string d;
-
-    double downs = 0;
-
-    while (getline(infile, holder)) {
-        stringstream ss {holder};
-        ss >> x >> y >> d;
-
-        if (days_passed(start, d) >= 0 && days_passed(d, end) >= 0) {
-            if (stod(x) > stod(y)) ++downs;
-        }
-    }
-    return downs;
-}
-
-
-
-// GOLDEN FORMULA
-double days_above(const string& fn, const string& start, const string& end) {
-    ifstream infile {fn};
-
-    string holder;
-    string x;
-    string y;
-    string d;
-
-    double aboves = 0;
-
-    double stepc = percent_change(get_avg(fn, start), get_avg(fn, end));
-    double stedp = days_passed(start, end);
-
-    while (getline(infile, holder)) {
-        stringstream ss {holder};
-        ss >> x >> y >> d;
-
-        if (days_passed(start, d) >= 0 && days_passed(d, end) >= 0) {
-
-            double stdpc = percent_change(get_avg(fn, start), get_avg(fn, d));
-            double stddp = days_passed(start, d);
-
-            if (stdpc > ( stepc * (stddp / stedp) )) ++aboves;
-        }
-    }
-
-    return aboves;
-}
-
-double days_below(const string& fn, const string& start, const string& end) {
-    ifstream infile {fn};
-
-    string holder;
-    string x;
-    string y;
-    string d;
-
-    double belows = 0;
-
-    double stepc = percent_change(get_avg(fn, start), get_avg(fn, end));
-    double stedp = days_passed(start, end);
-
-    while (getline(infile, holder)) {
-        stringstream ss {holder};
-        ss >> x >> y >> d;
-
-        if (days_passed(start, d) >= 0 && days_passed(d, end) >= 0) {
-
-            double stdpc = percent_change(get_avg(fn, start), get_avg(fn, d));
-            double stddp = days_passed(start, d);
-
-            if (stdpc < ( stepc * (stddp / stedp) )) ++belows;
-        }
-    }
-
-    return belows;
-}
-
-double days_on(const string& fn, const string& start, const string& end) {
-    ifstream infile {fn};
-
-    string holder;
-    string x;
-    string y;
-    string d;
-
-    double on_the_line = 0;
-
-    double stepc = percent_change(get_avg(fn, start), get_avg(fn, end));
-    double stedp = days_passed(start, end);
-
-    while (getline(infile, holder)) {
-        stringstream ss {holder};
-        ss >> x >> y >> d;
-
-        if (days_passed(start, d) >= 0 && days_passed(d, end) >= 0) {
-
-            double stdpc = percent_change(get_avg(fn, start), get_avg(fn, d));
-            double stddp = days_passed(start, d);
-
-            if (stdpc == ( stepc * (stddp / stedp) )) ++on_the_line;
-        }
-    }
-
-    return on_the_line;
-}
-
-// versions weighted by the differential off the line
-double weighted_days_above(const string& fn, const string& start, const string& end) {
-    ifstream infile {fn};
-
-    string holder;
-    string x;
-    string y;
-    string d;
-
-    double waboves = 0;
-
-    double stepc = percent_change(get_avg(fn, start), get_avg(fn, end));
-    double stedp = days_passed(start, end);
-
-    while (getline(infile, holder)) {
-        stringstream ss {holder};
-        ss >> x >> y >> d;
-
-        if (days_passed(start, d) >= 0 && days_passed(d, end) >= 0) {
-            double stdpc = percent_change(get_avg(fn, start), get_avg(fn, d));
-            double stddp = days_passed(start, d);
-
-            if (stdpc > ( stepc * (stddp / stedp) )) {
-
-                double true_price = get_avg(fn, d);
-                double line_price = get_avg(fn, start) * (1 + stepc * (stddp / stedp));
-
-                waboves += (true_price - line_price);
-            }
-        }
-    }
-
-    return waboves;
-}
+// // number of days the stock increased (close > open)
+// double days_of_increases(const string& fn, const string& start, const string& end) {
+//     ifstream infile {fn};
+//
+//     string holder;
+//     string x;
+//     string y;
+//     string d;
+//
+//     double ups = 0;
+//
+//     while (getline(infile, holder)) {
+//         stringstream ss {holder};
+//         ss >> x >> y >> d;
+//
+//         if (days_passed(start, d) >= 0 && days_passed(d, end) >= 0) {
+//             if (stod(x) < stod(y)) ++ups;
+//         }
+//     }
+//     return ups;
+// }
+//
+// // number of days the stock increased (close > open)
+// double days_of_decreases(const string& fn, const string& start, const string& end) {
+//     ifstream infile {fn};
+//
+//     string holder;
+//     string x;
+//     string y;
+//     string d;
+//
+//     double downs = 0;
+//
+//     while (getline(infile, holder)) {
+//         stringstream ss {holder};
+//         ss >> x >> y >> d;
+//
+//         if (days_passed(start, d) >= 0 && days_passed(d, end) >= 0) {
+//             if (stod(x) > stod(y)) ++downs;
+//         }
+//     }
+//     return downs;
+// }
+//
+//
+//
+// // GOLDEN FORMULA
+// double days_above(const string& fn, const string& start, const string& end) {
+//     ifstream infile {fn};
+//
+//     string holder;
+//     string x;
+//     string y;
+//     string d;
+//
+//     double aboves = 0;
+//
+//     double stepc = percent_change(get_avg(fn, start), get_avg(fn, end));
+//     double stedp = days_passed(start, end);
+//
+//     while (getline(infile, holder)) {
+//         stringstream ss {holder};
+//         ss >> x >> y >> d;
+//
+//         if (days_passed(start, d) >= 0 && days_passed(d, end) >= 0) {
+//
+//             double stdpc = percent_change(get_avg(fn, start), get_avg(fn, d));
+//             double stddp = days_passed(start, d);
+//
+//             if (stdpc > ( stepc * (stddp / stedp) )) ++aboves;
+//         }
+//     }
+//
+//     return aboves;
+// }
+//
+// double days_below(const string& fn, const string& start, const string& end) {
+//     ifstream infile {fn};
+//
+//     string holder;
+//     string x;
+//     string y;
+//     string d;
+//
+//     double belows = 0;
+//
+//     double stepc = percent_change(get_avg(fn, start), get_avg(fn, end));
+//     double stedp = days_passed(start, end);
+//
+//     while (getline(infile, holder)) {
+//         stringstream ss {holder};
+//         ss >> x >> y >> d;
+//
+//         if (days_passed(start, d) >= 0 && days_passed(d, end) >= 0) {
+//
+//             double stdpc = percent_change(get_avg(fn, start), get_avg(fn, d));
+//             double stddp = days_passed(start, d);
+//
+//             if (stdpc < ( stepc * (stddp / stedp) )) ++belows;
+//         }
+//     }
+//
+//     return belows;
+// }
+//
+// double days_on(const string& fn, const string& start, const string& end) {
+//     ifstream infile {fn};
+//
+//     string holder;
+//     string x;
+//     string y;
+//     string d;
+//
+//     double on_the_line = 0;
+//
+//     double stepc = percent_change(get_avg(fn, start), get_avg(fn, end));
+//     double stedp = days_passed(start, end);
+//
+//     while (getline(infile, holder)) {
+//         stringstream ss {holder};
+//         ss >> x >> y >> d;
+//
+//         if (days_passed(start, d) >= 0 && days_passed(d, end) >= 0) {
+//
+//             double stdpc = percent_change(get_avg(fn, start), get_avg(fn, d));
+//             double stddp = days_passed(start, d);
+//
+//             if (stdpc == ( stepc * (stddp / stedp) )) ++on_the_line;
+//         }
+//     }
+//
+//     return on_the_line;
+// }
+//
+// // versions weighted by the differential off the line
+// double weighted_days_above(const string& fn, const string& start, const string& end) {
+//     ifstream infile {fn};
+//
+//     string holder;
+//     string x;
+//     string y;
+//     string d;
+//
+//     double waboves = 0;
+//
+//     double stepc = percent_change(get_avg(fn, start), get_avg(fn, end));
+//     double stedp = days_passed(start, end);
+//
+//     while (getline(infile, holder)) {
+//         stringstream ss {holder};
+//         ss >> x >> y >> d;
+//
+//         if (days_passed(start, d) >= 0 && days_passed(d, end) >= 0) {
+//             double stdpc = percent_change(get_avg(fn, start), get_avg(fn, d));
+//             double stddp = days_passed(start, d);
+//
+//             if (stdpc > ( stepc * (stddp / stedp) )) {
+//
+//                 double true_price = get_avg(fn, d);
+//                 double line_price = get_avg(fn, start) * (1 + stepc * (stddp / stedp));
+//
+//                 waboves += (true_price - line_price);
+//             }
+//         }
+//     }
+//
+//     return waboves;
+// }
 
 int main() {
 
@@ -293,6 +301,7 @@ int main() {
     cout << my_days[0].went_up() << "\n";
     cout << my_days[0].went_down() << "\n";
     cout << my_days[0].stayed_same() << "\n";
+    cout << days_between(my_days[4], my_days[0]) << "\n";
 
 
 
