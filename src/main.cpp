@@ -4,6 +4,7 @@
 #include <sstream>
 #include <cmath>
 #include <vector>
+#include <chrono>
 
 using namespace std;
 
@@ -41,6 +42,11 @@ public:
     bool stayed_same() const {
         if (went_up() == false && went_down() == false) return true;
         return false;
+    }
+
+    // cout appearance
+    friend ostream& operator<<(ostream& os, const TradingDay& td) {
+        return os << "On " << td.date << " the stock opened at " << td.open << " and closed at " << td.close;
     }
 };
 
@@ -90,6 +96,29 @@ double days_between(const TradingDay& td1, const TradingDay& td2) {
     return (t2 - t1) / 86400;
 }
 
+double days_between(const string& date1, const string& date2) {
+    // Parse first date (mm/dd/yyyy)
+    int month1 = stoi(date1.substr(0, 2));
+    int day1 = stoi(date1.substr(3, 2));
+    int year1 = stoi(date1.substr(6, 4));
+
+    // Parse second date (mm/dd/yyyy)
+    int month2 = stoi(date2.substr(0, 2));
+    int day2 = stoi(date2.substr(3, 2));
+    int year2 = stoi(date2.substr(6, 4));
+
+    // Create tm structs for both dates
+    struct tm time1 = {0, 0, 0, day1, month1 - 1, year1 - 1900};
+    struct tm time2 = {0, 0, 0, day2, month2 - 1, year2 - 1900};
+
+    // Convert to time_t (seconds since epoch)
+    time_t t1 = mktime(&time1);
+    time_t t2 = mktime(&time2);
+
+    // Calculate difference in days (signed)
+    return (t2 - t1) / 86400;
+}
+
 
 // calculate the percent change between two days using close prices (return value is in decimal format)
 double percent_change(const TradingDay& td1, const TradingDay& td2) {
@@ -107,63 +136,52 @@ double annualized_pc(const double& pc, const double& days) {
 }
 
 
-// count the number of times a stock increased
+// count the number of days a stock increased in a given period of time
+double count_ups(const vector<TradingDay>& vec, const string& start, const string& end) {
+    double ups = 0;
+    for (const auto& td : vec) {
+        if (days_between(start, td.get_date()) >= 0) {
+            if (days_between(td.get_date(), end) >= 0) {
+                if (td.went_up()) ++ups;
+            }
+        }
+    }
+    return ups;
+}
+
+// count the number of days a stock decreased in a given period of time
+double count_downs(const vector<TradingDay>& vec, const string& start, const string& end) {
+    double downs = 0;
+    for (const auto& td : vec) {
+        if (days_between(start, td.get_date()) >= 0) {
+            if (days_between(td.get_date(), end) >= 0) {
+                if (td.went_down()) ++downs;
+            }
+        }
+    }
+    return downs;
+}
+
+// count the number of days a stock decreased in a given period of time
+double count_sames(const vector<TradingDay>& vec, const string& start, const string& end) {
+    double sames = 0;
+    for (const auto& td : vec) {
+        if (days_between(start, td.get_date()) >= 0) {
+            if (days_between(td.get_date(), end) >= 0) {
+                if (td.stayed_same()) ++sames;
+            }
+        }
+    }
+    return sames;
+}
 
 
 
-
-// count increases, decreases, and sames
 // return days above, below, and on the line
 // return a weighted version by dollar amount difference
 
 
 
-// // number of days the stock increased (close > open)
-// double days_of_increases(const string& fn, const string& start, const string& end) {
-//     ifstream infile {fn};
-//
-//     string holder;
-//     string x;
-//     string y;
-//     string d;
-//
-//     double ups = 0;
-//
-//     while (getline(infile, holder)) {
-//         stringstream ss {holder};
-//         ss >> x >> y >> d;
-//
-//         if (days_passed(start, d) >= 0 && days_passed(d, end) >= 0) {
-//             if (stod(x) < stod(y)) ++ups;
-//         }
-//     }
-//     return ups;
-// }
-//
-// // number of days the stock increased (close > open)
-// double days_of_decreases(const string& fn, const string& start, const string& end) {
-//     ifstream infile {fn};
-//
-//     string holder;
-//     string x;
-//     string y;
-//     string d;
-//
-//     double downs = 0;
-//
-//     while (getline(infile, holder)) {
-//         stringstream ss {holder};
-//         ss >> x >> y >> d;
-//
-//         if (days_passed(start, d) >= 0 && days_passed(d, end) >= 0) {
-//             if (stod(x) > stod(y)) ++downs;
-//         }
-//     }
-//     return downs;
-// }
-//
-//
-//
 // // GOLDEN FORMULA
 // double days_above(const string& fn, const string& start, const string& end) {
 //     ifstream infile {fn};
@@ -289,11 +307,17 @@ double annualized_pc(const double& pc, const double& days) {
 
 int main() {
 
+    // Start timing
+    auto start = chrono::high_resolution_clock::now();
+
+
     // read the file in and make a vector of TradingDay objects
     vector<TradingDay> my_days;
     my_days = read_days(FILE_NAME);
 
     // test code
+    cout << my_days[0] << "\n";
+
     cout << my_days[0].get_open() << "\n";
     cout << my_days[0].get_close() << "\n";
     cout << my_days[0].get_date() << "\n";
@@ -302,7 +326,15 @@ int main() {
     cout << my_days[0].went_down() << "\n";
     cout << my_days[0].stayed_same() << "\n";
     cout << days_between(my_days[4], my_days[0]) << "\n";
+    cout << days_between("11/05/2023", "04/20/2025") << "\n";
+    cout << count_ups(my_days, "10/01/2025", "10/09/2025") << "\n";
 
+
+    // End timing
+    auto end = chrono::high_resolution_clock::now();
+    // Calculate duration
+    auto duration = chrono::duration_cast<chrono::microseconds>(end - start);
+    cout << "\nExecution time: " << duration.count()/1000 << " milliseconds" << "\n";
 
 
 
