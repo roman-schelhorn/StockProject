@@ -261,46 +261,66 @@ double days_on(const vector<TradingDay>& vec, const string& start, const string&
 }
 
 
-// return a weighted version by dollar amount difference
+// now weight the differences by dollar amounts
+double weighted_days_above(const vector<TradingDay>& vec, const string& start, const string& end) {
+    double waboves = 0;
+    TradingDay start_day;
+    TradingDay end_day;
+
+    // find start and end days
+    for (const auto& td : vec) {
+        if (td.get_date() == start) start_day = td;
+        else if (td.get_date() == end) end_day = td;
+    }
+
+    // total percentage change from start to end
+    double total_pc = percent_change(start_day, end_day);
+
+    // count days above
+    for (const auto& td : vec) {
+        if (days_between(start, td.get_date()) >= 0) {
+            if (days_between(td.get_date(), end) >= 0) {
+
+                double actual_pc = percent_change(start_day, td);
+                double scaled_total_pc = total_pc * (days_between(start_day, td)/days_between(start_day, end_day));
+
+                if (actual_pc > scaled_total_pc) waboves += (start_day.get_avg() * (actual_pc - scaled_total_pc));
+            }
+        }
+    }
+    return waboves;
+}
+
+double weighted_days_below(const vector<TradingDay>& vec, const string& start, const string& end) {
+    double wbelows = 0;
+    TradingDay start_day;
+    TradingDay end_day;
+
+    // find start and end days
+    for (const auto& td : vec) {
+        if (td.get_date() == start) start_day = td;
+        else if (td.get_date() == end) end_day = td;
+    }
+
+    // total percentage change from start to end
+    double total_pc = percent_change(start_day, end_day);
+
+    // count days above
+    for (const auto& td : vec) {
+        if (days_between(start, td.get_date()) >= 0) {
+            if (days_between(td.get_date(), end) >= 0) {
+
+                double actual_pc = percent_change(start_day, td);
+                double scaled_total_pc = total_pc * (days_between(start_day, td)/days_between(start_day, end_day));
+
+                if (actual_pc < scaled_total_pc) wbelows += (start_day.get_avg() * (scaled_total_pc - actual_pc));
+            }
+        }
+    }
+    return wbelows;
+}
 
 
-
-
-//
-// // versions weighted by the differential off the line
-// double weighted_days_above(const string& fn, const string& start, const string& end) {
-//     ifstream infile {fn};
-//
-//     string holder;
-//     string x;
-//     string y;
-//     string d;
-//
-//     double waboves = 0;
-//
-//     double stepc = percent_change(get_avg(fn, start), get_avg(fn, end));
-//     double stedp = days_passed(start, end);
-//
-//     while (getline(infile, holder)) {
-//         stringstream ss {holder};
-//         ss >> x >> y >> d;
-//
-//         if (days_passed(start, d) >= 0 && days_passed(d, end) >= 0) {
-//             double stdpc = percent_change(get_avg(fn, start), get_avg(fn, d));
-//             double stddp = days_passed(start, d);
-//
-//             if (stdpc > ( stepc * (stddp / stedp) )) {
-//
-//                 double true_price = get_avg(fn, d);
-//                 double line_price = get_avg(fn, start) * (1 + stepc * (stddp / stedp));
-//
-//                 waboves += (true_price - line_price);
-//             }
-//         }
-//     }
-//
-//     return waboves;
-// }
 
 int main() {
 
@@ -329,6 +349,8 @@ int main() {
     cout << days_above(my_days, "10/20/2017", "10/21/2019") << "\n";
     cout << days_below(my_days, "10/20/2017", "10/21/2019") << "\n";
     cout << days_on(my_days, "10/20/2017", "10/21/2019") << "\n";
+    cout << weighted_days_above(my_days, "10/20/2017", "10/21/2019") << "\n";
+    cout << weighted_days_below(my_days, "10/20/2017", "10/21/2019") << "\n";
 
 
     // End timing
