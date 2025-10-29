@@ -22,6 +22,7 @@ private:
 public:
     // constructor
     TradingDay(double o, double c, string d) : open{o}, close{c}, date{d} {}
+    TradingDay() {}
 
     // getters to access private data
     double get_open() const {return open;}
@@ -31,18 +32,9 @@ public:
     // get calculated data
     double get_change() const {return close - open;}
     double get_avg() const {return (open + close)/2;}
-    bool went_up() const {
-        if (close > open) return true;
-        return false;
-    }
-    bool went_down() const {
-        if (went_up()) return false;
-        return true;
-    }
-    bool stayed_same() const {
-        if (went_up() == false && went_down() == false) return true;
-        return false;
-    }
+    bool went_up() const { return close > open; }
+    bool went_down() const { return open > close; }
+    bool stayed_same() const { return open == close; }
 
     // cout appearance
     friend ostream& operator<<(ostream& os, const TradingDay& td) {
@@ -176,99 +168,104 @@ double count_sames(const vector<TradingDay>& vec, const string& start, const str
 }
 
 
+// GOLDEN FORMULAS
 
-// return days above, below, and on the line
+// count the days spent above the connecting price line
+double days_above(const vector<TradingDay>& vec, const string& start, const string& end) {
+    double aboves = 0;
+    TradingDay start_day;
+    TradingDay end_day;
+
+    // find start and end days
+    for (const auto& td : vec) {
+        if (td.get_date() == start) start_day = td;
+        else if (td.get_date() == end) end_day = td;
+    }
+
+    // total percentage change from start to end
+    double total_pc = percent_change(start_day, end_day);
+
+    // count days above
+    for (const auto& td : vec) {
+        if (days_between(start, td.get_date()) >= 0) {
+            if (days_between(td.get_date(), end) >= 0) {
+
+                double actual_pc = percent_change(start_day, td);
+                double scaled_total_pc = total_pc * (days_between(start_day, td)/days_between(start_day, end_day));
+
+                if (actual_pc > scaled_total_pc) ++aboves;
+            }
+        }
+    }
+    return aboves;
+}
+
+// count the days spent above the connecting price line
+double days_below(const vector<TradingDay>& vec, const string& start, const string& end) {
+    double belows = 0;
+    TradingDay start_day;
+    TradingDay end_day;
+
+    // find start and end days
+    for (const auto& td : vec) {
+        if (td.get_date() == start) start_day = td;
+        else if (td.get_date() == end) end_day = td;
+    }
+
+    // total percentage change from start to end
+    double total_pc = percent_change(start_day, end_day);
+
+    // count days above
+    for (const auto& td : vec) {
+        if (days_between(start, td.get_date()) >= 0) {
+            if (days_between(td.get_date(), end) >= 0) {
+
+                double actual_pc = percent_change(start_day, td);
+                double scaled_total_pc = total_pc * (days_between(start_day, td)/days_between(start_day, end_day));
+
+                if (actual_pc < scaled_total_pc) ++belows;
+            }
+        }
+    }
+    return belows;
+}
+
+// count the days spent above the connecting price line
+double days_on(const vector<TradingDay>& vec, const string& start, const string& end) {
+    double ons = 0;
+    TradingDay start_day;
+    TradingDay end_day;
+
+    // find start and end days
+    for (const auto& td : vec) {
+        if (td.get_date() == start) start_day = td;
+        else if (td.get_date() == end) end_day = td;
+    }
+
+    // total percentage change from start to end
+    double total_pc = percent_change(start_day, end_day);
+
+    // count days above
+    for (const auto& td : vec) {
+        if (days_between(start, td.get_date()) >= 0) {
+            if (days_between(td.get_date(), end) >= 0) {
+
+                double actual_pc = percent_change(start_day, td);
+                double scaled_total_pc = total_pc * (days_between(start_day, td)/days_between(start_day, end_day));
+
+                if (actual_pc == scaled_total_pc) ++ons;
+            }
+        }
+    }
+    return ons;
+}
+
+
 // return a weighted version by dollar amount difference
 
 
 
-// // GOLDEN FORMULA
-// double days_above(const string& fn, const string& start, const string& end) {
-//     ifstream infile {fn};
-//
-//     string holder;
-//     string x;
-//     string y;
-//     string d;
-//
-//     double aboves = 0;
-//
-//     double stepc = percent_change(get_avg(fn, start), get_avg(fn, end));
-//     double stedp = days_passed(start, end);
-//
-//     while (getline(infile, holder)) {
-//         stringstream ss {holder};
-//         ss >> x >> y >> d;
-//
-//         if (days_passed(start, d) >= 0 && days_passed(d, end) >= 0) {
-//
-//             double stdpc = percent_change(get_avg(fn, start), get_avg(fn, d));
-//             double stddp = days_passed(start, d);
-//
-//             if (stdpc > ( stepc * (stddp / stedp) )) ++aboves;
-//         }
-//     }
-//
-//     return aboves;
-// }
-//
-// double days_below(const string& fn, const string& start, const string& end) {
-//     ifstream infile {fn};
-//
-//     string holder;
-//     string x;
-//     string y;
-//     string d;
-//
-//     double belows = 0;
-//
-//     double stepc = percent_change(get_avg(fn, start), get_avg(fn, end));
-//     double stedp = days_passed(start, end);
-//
-//     while (getline(infile, holder)) {
-//         stringstream ss {holder};
-//         ss >> x >> y >> d;
-//
-//         if (days_passed(start, d) >= 0 && days_passed(d, end) >= 0) {
-//
-//             double stdpc = percent_change(get_avg(fn, start), get_avg(fn, d));
-//             double stddp = days_passed(start, d);
-//
-//             if (stdpc < ( stepc * (stddp / stedp) )) ++belows;
-//         }
-//     }
-//
-//     return belows;
-// }
-//
-// double days_on(const string& fn, const string& start, const string& end) {
-//     ifstream infile {fn};
-//
-//     string holder;
-//     string x;
-//     string y;
-//     string d;
-//
-//     double on_the_line = 0;
-//
-//     double stepc = percent_change(get_avg(fn, start), get_avg(fn, end));
-//     double stedp = days_passed(start, end);
-//
-//     while (getline(infile, holder)) {
-//         stringstream ss {holder};
-//         ss >> x >> y >> d;
-//
-//         if (days_passed(start, d) >= 0 && days_passed(d, end) >= 0) {
-//
-//             double stdpc = percent_change(get_avg(fn, start), get_avg(fn, d));
-//             double stddp = days_passed(start, d);
-//
-//             if (stdpc == ( stepc * (stddp / stedp) )) ++on_the_line;
-//         }
-//     }
-//
-//     return on_the_line;
-// }
+
 //
 // // versions weighted by the differential off the line
 // double weighted_days_above(const string& fn, const string& start, const string& end) {
@@ -329,6 +326,10 @@ int main() {
     cout << days_between("11/05/2023", "04/20/2025") << "\n";
     cout << count_ups(my_days, "10/01/2025", "10/09/2025") << "\n";
 
+    cout << days_above(my_days, "10/20/2017", "10/21/2019") << "\n";
+    cout << days_below(my_days, "10/20/2017", "10/21/2019") << "\n";
+    cout << days_on(my_days, "10/20/2017", "10/21/2019") << "\n";
+
 
     // End timing
     auto end = chrono::high_resolution_clock::now();
@@ -336,82 +337,6 @@ int main() {
     auto duration = chrono::duration_cast<chrono::microseconds>(end - start);
     cout << "\nExecution time: " << duration.count()/1000 << " milliseconds" << "\n";
 
-
-
-    //
-    // string sdate = "03/21/2022";                                                // start date
-    // string edate = "10/08/2024";                                                // end date
-    //
-    // double dp = days_passed(sdate, edate);                             // number of days passed
-    // double first_close = get_close(FILE_NAME, sdate);                   // close price on start date
-    // double last_close = get_close(FILE_NAME, edate);                    // close price on end date
-    // double pc_decimal = percent_change(first_close, last_close);            // total % change (capital gain)
-    // double apc_decimal = annual_p_change(pc_decimal, dp);                  // annualize return rate
-    // double up_days = days_of_increases(FILE_NAME, sdate, edate);    // days open < close
-    // double down_days = days_of_decreases(FILE_NAME, sdate, edate);  // days open > close
-    //
-    // double higher_days = days_above(FILE_NAME, sdate, edate);
-    // double lower_days = days_below(FILE_NAME, sdate, edate);
-    // double otl_days = days_on(FILE_NAME, sdate, edate);
-    // double wda = weighted_days_above(FILE_NAME, sdate, edate);
-    // double wdb = weighted_days_below(FILE_NAME, sdate, edate);
-    //
-    //
-    // cout << dp << " days passed\n";
-    // cout << first_close << " -> " << last_close << "\n";
-    // cout << pc_decimal * 100 << "% change (in total)\n";
-    // cout << apc_decimal * 100 << "% annualized return\n";
-    // cout << up_days << " days of increases (close > open)\n";       // ups + downs will NOT equal total days
-    // cout << down_days << " days of decreases (close < open)\n";     // up/down days only count trading days < total days
-    //
-    // cout << higher_days << " above the connecting line\n";
-    // cout << lower_days << " below the connecting line\n";
-    // cout << otl_days << " on the connecting line\n";
-    // cout << wda << " <- weighted value of time spent above the connecting line\n";
-    // cout << wdb << " <- weighted value of time spent below the connecting line\n";
-    //
-    //
-    // cout << "\n\n\n";
-    //
-    // vector<string> sdates {"10/12/2015", "06/12/2017", "01/08/2021", "11/17/2022", "04/09/2024"};
-    // vector<string> edates1 {"10/12/2016", "06/12/2018", "01/07/2022", "11/17/2023", "04/09/2025"};
-    // vector<string> edates2 {"10/12/2017", "06/12/2019", "01/09/2023"};
-    // edate = "10/09/2025";
-    //
-    // // 1-year time horizons
-    // int x = 0;
-    // int y = 0;
-    // for (int i = 0; i != 5; ++i) {
-    //     string sd = sdates[i];
-    //     string ed = edates1[i];
-    //     if (weighted_days_above(FILE_NAME, sd, ed) > weighted_days_below(FILE_NAME, sd, ed)) ++x;
-    //     else ++y;
-    // }
-    // cout << "Number of 1-year periods (of 5) where wda exceeded wdb: " << x << "\n";
-    // cout << "Number of 1-year periods (of 5) where wdb exceeded wda: " << y << "\n\n";
-    //
-    // // 2-year time horizons
-    // int a = 0;
-    // int b = 0;
-    // for (int i = 0; i != 3; ++i) {
-    //     string sd = sdates[i];
-    //     string ed = edates2[i];
-    //     if (weighted_days_above(FILE_NAME, sd, ed) > weighted_days_below(FILE_NAME, sd, ed)) ++a;
-    //     else ++b;
-    // }
-    // cout << "Number of 2-year periods (of 3) where wda exceeded wdb: " << a << "\n";
-    // cout << "Number of 2-year periods (of 3) where wdb exceeded wda: " << b << "\n\n";
-    //
-    // // then-to-now time horizons
-    // int j = 0;
-    // int k = 0;
-    // for (int i = 0; i != 5; ++i) {
-    //     string sd = sdates[i];
-    //     if (weighted_days_above(FILE_NAME, sd, edate) > weighted_days_below(FILE_NAME, sd, edate)) ++j;
-    //     else ++k;
-    // }
-    // cout << "Number of then-to-now periods (of 5) where wda exceeded wdb: " << j << "\n";
-    // cout << "Number of then-to-now (of 5) where wdb exceeded wda: " << k << "\n\n";
 
     return 0;
 }
